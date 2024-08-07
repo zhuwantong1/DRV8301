@@ -59,7 +59,7 @@ void PeriphCommonClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+uint8_t len;
 /* USER CODE END 0 */
 
 /**
@@ -99,7 +99,16 @@ int main(void)
   MX_TIM2_Init();
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
-
+    RetargetInit(&huart1);
+    HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
+    HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
+    HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
+    HAL_TIMEx_PWMN_Start(&htim1,TIM_CHANNEL_1);
+    HAL_TIMEx_PWMN_Start(&htim1,TIM_CHANNEL_2);
+    HAL_TIMEx_PWMN_Start(&htim1,TIM_CHANNEL_3);
+//    uint32_t period = __HAL_TIM_GET_AUTORELOAD(&htim1);
+//    uint32_t pulse = period / 2; // 50% 占空�?
+//    __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, pulse);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -109,6 +118,17 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+      if (g_usart_rx_sta & 0x8000)        /* 接收到了数据? */
+      {
+          len = g_usart_rx_sta & 0x3fff;  /* 得到此次接收到的数据长度 */
+          printf("\r\n输出是:\r\n");
+
+          HAL_UART_Transmit(&huart1,(uint8_t*)g_usart_rx_buf, len, 1000);    /* 发�?�接收到的数�? */
+          while(__HAL_UART_GET_FLAG(&huart1,UART_FLAG_TC) != SET);           /* 等待发�?�结�? */
+          printf("\r\n\r\n");             /* 插入换行 */
+          g_usart_rx_sta = 0;
+      }
+      //printf("hello\r\n");
   }
   /* USER CODE END 3 */
 }

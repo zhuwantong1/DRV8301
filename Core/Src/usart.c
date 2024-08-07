@@ -21,7 +21,9 @@
 #include "usart.h"
 
 /* USER CODE BEGIN 0 */
-
+uint8_t g_usart_rx_buf[USART_REC_LEN];
+uint16_t g_usart_rx_sta = 0;
+uint8_t g_rx_buffer[RXBUFFERSIZE];
 /* USER CODE END 0 */
 
 UART_HandleTypeDef huart1;
@@ -66,7 +68,7 @@ void MX_USART1_UART_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN USART1_Init 2 */
-
+    HAL_UART_Receive_IT(&huart1, (uint8_t *)g_rx_buffer, RXBUFFERSIZE);
   /* USER CODE END USART1_Init 2 */
 
 }
@@ -141,5 +143,44 @@ void HAL_UART_MspDeInit(UART_HandleTypeDef* uartHandle)
 }
 
 /* USER CODE BEGIN 1 */
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+    if (huart->Instance == USART1)                    /* 如果是串口1 */
+    {
+        if ((g_usart_rx_sta & 0x8000) == 0)             /* 接收未完成 */
+        {
+            if (g_usart_rx_sta & 0x4000)                /* 接收到了0x0d（即回车键） */
+            {
+                if (g_rx_buffer[0] != 0x0a)             /* 接收到的不是0x0a（即不是换行键） */
+                {
+                    g_usart_rx_sta = 0;                 /* 接收错误,重新开始 */
+                }
+                else                                    /* 接收到的是0x0a（即换行键） */
+                {
+                    g_usart_rx_sta |= 0x8000;           /* 接收完成了 */
+                }
+            }
+            else                                        /* 还没收到0X0d（即回车键） */
+            {
+                if (g_rx_buffer[0] == 0x0d)
+                    g_usart_rx_sta |= 0x4000;
+                else
+                {
+                    g_usart_rx_buf[g_usart_rx_sta & 0X3FFF] = g_rx_buffer[0];
+                    g_usart_rx_sta++;
+
+                    if (g_usart_rx_sta > (USART_REC_LEN - 1))
+                    {
+                        g_usart_rx_sta = 0;             /* 接收数据错误,重新开始接收 */
+                    }
+                }
+            }
+        }
+        HAL_UART_Receive_IT(&huart1, (uint8_t *)g_rx_buffer, RXBUFFERSIZE);
+    }
+}
+
+
+
 
 /* USER CODE END 1 */
